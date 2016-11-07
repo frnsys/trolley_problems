@@ -1,0 +1,82 @@
+import _ from 'underscore';
+import * as THREE from 'three';
+
+const MODELSDIR = 'models/';
+const meshLoader = new THREE.JSONLoader();
+const objLoader = new THREE.ObjectLoader();
+const texLoader = new THREE.TextureLoader();
+
+function adjustMaterial(material, emit) {
+  console.log(material);
+  emit = emit || 0;
+  material.shininess = 0;
+  material.shading = THREE.FlatShading;
+  material.map.generateMipmaps = false;
+  material.map.magFilter = THREE.NearestFilter;
+  material.map.minFilter = THREE.NearestFilter;
+  if (emit) {
+    material.emissiveIntensity = emit;
+    material.emissive = {r: 0, g: 0, b: 0};
+  }
+
+  // increase saturation/brightness
+  material.color = {
+    r: 2.5,
+    g: 2.5,
+    b: 2.5
+  };
+}
+
+function adjustMaterials(obj, emit) {
+  if (obj.material) {
+    if (obj.material.map) {
+      adjustMaterial(obj.material, emit);
+    } else if (obj.material.materials) {
+      _.each(obj.material.materials, function(mat) {
+        adjustMaterial(mat, emit);
+      });
+    }
+  }
+  _.each(obj.children, function(child) {
+    adjustMaterials(child, emit);
+  });
+}
+
+var Loader = {
+  loadJSON: function(name, cb) {
+    meshLoader.load(MODELSDIR + name + '.json', cb);
+  },
+  loadMesh: function(name, cb) {
+    Loader.loadJSON(name, function(geometry, materials) {
+      var mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
+        map: materials[0].map
+      }));
+      adjustMaterials(mesh, 1);
+      mesh.name = name;
+      cb(mesh);
+    });
+  },
+  loadSkinnedMesh: function(name, cb) {
+    Loader.loadJSON(name, function(geometry, materials) {
+      _.each(materials, function(mat) {
+        mat.skinning = true;
+      });
+      var mesh = new THREE.SkinnedMesh(geometry, new THREE.MeshFaceMaterial(materials));
+      adjustMaterials(mesh, 0);
+      cb(mesh, geometry.animations);
+    });
+  },
+  loadTexture: function(name, cb) {
+    texLoader.load(MODELSDIR + name + '.png', function(tex) {
+      cb(tex);
+    });
+  },
+  loadObject: function(name, cb) {
+    objLoader.load(MODELSDIR + name + '.json', function(obj) {
+      adjustMaterials(obj, 0.5);
+      cb(obj)
+    });
+  }
+};
+
+export default Loader;
