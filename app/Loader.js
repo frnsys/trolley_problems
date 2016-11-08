@@ -7,7 +7,6 @@ const objLoader = new THREE.ObjectLoader();
 const texLoader = new THREE.TextureLoader();
 
 function adjustMaterial(material, emit) {
-  console.log(material);
   emit = emit || 0;
   material.shininess = 0;
   material.shading = THREE.FlatShading;
